@@ -323,6 +323,12 @@ def write_date_summary(all_data: list[dict], output_path: str) -> None:
     )
 
 
+SERVER_GROUPS = {
+    "group_1_2": {"1", "2"},
+    "group_3_4_5_6": {"3", "4", "5", "6"},
+}
+
+
 def main() -> None:
     server_dirs = sorted(
         d for d in glob.glob(os.path.join(DEFAULT_LOG_DIR, "*"))
@@ -348,20 +354,27 @@ def main() -> None:
         return
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    date_output = os.path.join(DEFAULT_LOG_DIR, f"error_report_by_date_{timestamp}.csv")
-    write_date_summary(all_data, date_output)
 
-    total_jobs = sum(d["total_jobs"] for d in all_data)
-    total_failures = sum(d["failures"] for d in all_data)
-    total_gpki = sum(sum(d["gpki_counts"].values()) for d in all_data)
-    print(f"\n{'=' * 60}")
-    print(f"  전체 통합 결과")
-    print(f"{'=' * 60}")
-    print(f"  서버 수: {len(server_dirs)}")
-    print(f"  전체 작업: {total_jobs}, 실패: {total_failures}, Gpki: {total_gpki}")
-    if total_jobs > 0:
-        print(f"  실패율: {total_failures / total_jobs * 100:.2f}%")
-    print(f"{'=' * 60}")
+    for group_name, server_ids in SERVER_GROUPS.items():
+        group_data = [d for d in all_data if d["server"] in server_ids]
+        if not group_data:
+            continue
+        output_path = os.path.join(
+            DEFAULT_LOG_DIR, f"error_report_{group_name}_{timestamp}.csv"
+        )
+        write_date_summary(group_data, output_path)
+
+        total_jobs = sum(d["total_jobs"] for d in group_data)
+        total_failures = sum(d["failures"] for d in group_data)
+        total_gpki = sum(sum(d["gpki_counts"].values()) for d in group_data)
+        servers_label = ",".join(sorted(server_ids))
+        print(f"\n{'=' * 60}")
+        print(f"  서버 [{servers_label}] 통합 결과")
+        print(f"{'=' * 60}")
+        print(f"  전체 작업: {total_jobs}, 실패: {total_failures}, Gpki: {total_gpki}")
+        if total_jobs > 0:
+            print(f"  실패율: {total_failures / total_jobs * 100:.2f}%")
+        print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":
